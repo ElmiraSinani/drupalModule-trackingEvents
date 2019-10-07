@@ -1,0 +1,87 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the DTP tracking events module.
+ */
+
+/**
+ * Implements hook_field_schema()
+ */
+/*
+ function dtp_tracking_events_field_schema($field) {
+ 	 $schema = array();
+  	 $schema['columns']['ga_id'] = array(
+	    'type' => 'text', 'length' => 0, 'not null' => FALSE
+  	 );
+
+ 	 return $schema;
+ } 
+*/
+
+function dtp_tracking_events_install(){
+
+ 	$weight = db_select('system', 's')
+      ->fields('s', array('weight'))
+      ->condition('name', 'dtp_flowplayer', '=')
+      ->execute()
+      ->fetchField();
+
+ db_update('system')
+    ->fields(array('weight' => $weight +1))
+    ->condition('name', 'dtp_tracking_events', '=')
+    ->execute();
+
+}
+ 
+/**
+ * Implements hook_schema()
+ * */
+ function dtp_tracking_events_schema() {
+ 	$schema['dtp_tracking_events_data'] = array(
+	  'description' => 'Logged in users info for tracking events with google analytics',
+	  'fields' => array(
+	    'id' => array(
+	      'description' => 'Serial id',
+	      'type' => 'serial',
+	      'unsigned' => TRUE,
+	      'not null' => TRUE,
+	    ),
+	    'user_id' => array(
+	      'description' => 'User id',
+	      'type' => 'int',
+	      'not null' => TRUE,
+	    ),	    
+	    'user_ip' => array(
+	      'description' => 'User IP',
+	      'type' => 'varchar',
+	      'length' => '255',
+	      'not null' => TRUE,
+	    ),	        
+	    'video_url' => array(
+	      'description' => 'Video Url',
+	      'type' => 'varchar',
+	      'length' => '255',
+	      'not null' => TRUE,
+	    ),
+	    'event' => array(
+	    	'description' => 'video event',
+		    'type' => 'varchar',
+		    'length' => '255',
+		    'not null' => TRUE,
+	    ),
+	    'timestamp' => array(
+	      'description' => 'Event timestamp',
+	      'type' => 'varchar',
+	      'length' => '255',
+	      'not null' => TRUE,
+	    ),	
+	    
+	 ),
+	 'primary key' => array('id'),
+	);
+
+	
+	return $schema;
+ }
+
+

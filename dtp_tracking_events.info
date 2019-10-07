@@ -1,0 +1,6 @@
+
+name = DTP Tracking Flowplayer Events
+description =  Track Flowplayer events with google analytics for logged In users.
+core = 7.x 
+version = 1.0
+package = Custom

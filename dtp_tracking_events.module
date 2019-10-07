@@ -1,0 +1,144 @@
+<?php
+
+/**
+ * @file
+ * Track Flowplayer events with google analytics for logged In users.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function dtp_tracking_events_permission() {
+  return array(
+      'access dtp_tracking_events content' => array(
+          'title' => t('Access content for the Current posts module'),
+      ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function dtp_tracking_events_menu() {  
+  //menu item for ajax
+  $items['tracking_events_ajax'] = array(
+        'title' => 'Ajax page for get and save events',
+        'page callback' => '_tracking_events_ajax',
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK
+  ); 
+  
+  return $items;
+}
+
+/**
+ * Implements hook_init(). 
+ */
+function dtp_tracking_events_init() {  
+  
+  if (!$user) {  													// Load the current user object.
+    global $user;
+  }
+
+  if ($user->uid !== 0){ 
+    // print_r(dtp_videos_load('131'));
+    $user_account = user_load($user->uid);
+    $field_insit = $user_account->field_institution_name['und'];
+    $field_fname = $user_account->field_first_name['und'];
+
+    if ($node = menu_get_object()) { 								// Get the nid
+      $node_id = $node->nid;
+    }
+    $node = node_load($node_id);  									//Load node by id
+ 
+    $subscribePackage = _get_product_sku($user->uid);				 //get video package
+
+    $tid = $node->field_genre['und'][0]['tid'];  
+    $term = taxonomy_term_load($tid);
+    $ganre = isset($term->name) ? $term->name : 'Unknown';   		//get ganre for video
+
+    $path_alias  = $node->path['alias'];
+    $itemByAlias = menu_get_item($path_alias, $router_item = NULL);    
+    $section = $itemByAlias['original_map'][0]; 					//get web site section
+    
+    $videoType = isset($node->type) ? $node->type : 'Unknown';
+    $production  = isset($node->title) ? $node->title : 'Unknown';
+    $institution = isset($field_insit[0]['value']) ? $field_insit[0]['value'] : 'Unknown';
+
+    $settings = array(              
+                'ga_id' => variable_get('googleanalytics_account'), //GA id
+                'user_id' => $user->uid,                            //userId 
+                'production' => $production,                        //production title  
+                'institution_name' => $institution,                 //user institution name or department        
+                'user_name' => $user_account->name,                 //username or departmentId                
+                'user_subscribe' => $subscribePackage,              //product package 
+                'genre' => $ganre,                                  //video ganre
+                'section' => $section,                              //web site section
+                'video_type' => $videoType,                          //video type
+                'last_played' => date('Y/m/d H:i:s')                //last played time
+
+    );
+	
+    drupal_add_js( array ("dtp_tracking_events" => $settings), 'setting');
+    drupal_add_js(drupal_get_path('module', 'dtp_tracking_events') . '/dtp_tracking_events.js', array('scope' => 'footer', 'weight' => 1000));  
+
+    }
+}
+
+
+
+// Get traking event data from file dtp_tracking_events.js, check it and insert to db
+function _tracking_events_ajax(){
+
+if (!$user) {  // Load the current user object.
+    global $user;
+}
+
+if ($user->uid !== 0 && isset($_GET['q']) && $_GET['q'] == 'tracking_events_ajax') {      
+
+    $event   = isset($_GET['event'])? $_GET['event'] : '';
+    $url     = isset($_GET['url'])? $_GET['url'] : '';   
+    
+    if($event=='Play' || $event=='Pause' || $event=='Stop' || $event=='Resume'){
+
+      $now = time(); 
+
+      $table = 'dtp_tracking_events_data';
+      $insert_data = array(
+                  'user_id' => $user->uid,                   
+                  'user_ip' => $user->hostname,
+                  'video_url' => $url,                           
+                  'event' => $event,
+                  'timestamp' => $now
+      );  
+      
+      // call function for insert data into the given table      
+      _insert_data($insert_data,$table);
+    }
+    
+  }
+}
+
+// function for insert data to givenn table
+function _insert_data($insert_data, $table) {
+ db_insert($table)
+    ->fields($insert_data)
+    ->execute();
+}
+
+//find praduck sku field, for video package
+function _get_product_sku($uid = NULL){
+
+  $product = NULL;
+  if ($order = dtp_custom_get_subscription_for_user($uid)) {
+    $product = dtp_custom_get_product_in_order($order);
+  }
+  if (!$product || empty($product->sku)) {
+    $sku = "Unknown";
+  }else{
+    $sku = $product->sku;
+  }
+
+  return $sku;
+}
+
